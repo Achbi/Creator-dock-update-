@@ -15,13 +15,9 @@ function App() {
       formData.append("url", url);
       formData.append("resolution", resolution);
 
-const response = await axios.post(
-  "https://creator-dock-update.onrender.com/",
-  formData,
-  {
-    headers: { "Content-Type": "multipart/form-data" },
-  }
-);
+      const response = await axios.post("https://creator-dock-update.onrender.com/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       // Flask currently returns HTML, so you might want to return JSON from Flask
       setMessage(response.data?.message || "Video downloaded successfully!");
