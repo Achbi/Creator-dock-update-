@@ -36,25 +36,36 @@ def get_youtube_object(url, max_retries=3):
     for attempt in range(max_retries):
         try:
             if attempt > 0:
-                delay = random.uniform(2, 6)
+                # Exponential backoff with jitter
+                delay = random.uniform(3, 8) * (2 ** attempt)
                 logger.info(f"Waiting {delay:.1f}s before retry {attempt+1}")
                 time.sleep(delay)
             
             logger.info(f"Attempt {attempt+1}: Trying to access YouTube video")
             
-            # Try different approaches to bypass bot detection
+            # Try different approaches with additional options
             if attempt == 0:
-                logger.info("Using po_token approach")
-                return YouTube(url, use_po_token=True)
+                logger.info("Using po_token + WEB client approach")
+                return YouTube(url, use_po_token=True, client='WEB')
             elif attempt == 1:
-                logger.info("Using WEB client approach")
+                logger.info("Using WEB client only")
                 return YouTube(url, client='WEB')
             else:
-                logger.info("Using default approach")
+                logger.info("Using default approach with delay")
+                time.sleep(random.uniform(1, 3))  # Extra delay for last attempt
                 return YouTube(url)
                 
         except Exception as e:
+            error_str = str(e).lower()
             logger.error(f"Attempt {attempt+1} failed: {str(e)}")
+            
+            # If we get a rate limit error, wait longer
+            if any(keyword in error_str for keyword in ["429", "too many", "rate limit", "bot"]):
+                if attempt < max_retries - 1:
+                    wait_time = random.uniform(10, 20)
+                    logger.info(f"Rate limited, waiting {wait_time:.1f}s before next attempt")
+                    time.sleep(wait_time)
+            
             if attempt == max_retries - 1:
                 raise e
             continue
@@ -170,8 +181,9 @@ def download_video():
 
         logger.info(f"Processing request - URL: {url[:60]}{'...' if len(url) > 60 else ''}, Resolution: {resolution}")
 
-        # Add initial random delay to avoid rate limiting
-        initial_delay = random.uniform(1, 4)
+        # Add initial random delay to avoid rate limiting (longer delay)
+        initial_delay = random.uniform(3, 8)
+        logger.info(f"Initial delay: {initial_delay:.1f}s")
         time.sleep(initial_delay)
 
         # Get YouTube object with multiple retry strategies
@@ -381,7 +393,7 @@ def download_video():
         logger.error(f"Error after {processing_time}s: {error_msg}")
         
         # Categorize and handle different types of errors
-        if any(keyword in error_msg.lower() for keyword in ["bot", "blocked", "403", "forbidden"]):
+        if any(keyword in error_msg.lower() for keyword in ["bot", "blocked", "403", "forbidden", "429", "too many requests"]):
             return jsonify({
                 "message": "Access temporarily blocked by YouTube. Please try again in a few minutes.",
                 "error_type": "rate_limited"
