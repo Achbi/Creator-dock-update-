@@ -36,7 +36,12 @@ function App() {
       console.error("Error details:", error.response?.data);
       
       if (error.response?.data?.message) {
-        setMessage(`Error: ${error.response.data.message}`);
+        const errorType = error.response.data.error_type;
+        if (errorType === 'rate_limited') {
+          setMessage(`Rate Limited: ${error.response.data.message}. Please wait 10-15 minutes before trying again.`);
+        } else {
+          setMessage(`Error: ${error.response.data.message}`);
+        }
       } else if (error.code === 'ECONNABORTED') {
         setMessage("Request timed out. Video might be too large or processing is taking too long.");
       } else {
@@ -117,4 +122,4 @@ function App() {
   );
 }
 
-export default App;
+export default App; 
